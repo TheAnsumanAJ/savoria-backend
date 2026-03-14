@@ -29,11 +29,18 @@ app.use(cors({
   origin: function (origin, callback) {
     // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+    
+    // Normalize origins (remove trailing slashes for safer comparison)
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    const isAllowed = allowedOrigins.some(o => o.replace(/\/$/, "") === normalizedOrigin);
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.error(`🚫 CORS blocked for origin: ${origin}`);
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+      callback(new Error(msg), false);
     }
-    return callback(null, true);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
