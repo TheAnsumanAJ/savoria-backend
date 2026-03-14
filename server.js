@@ -47,7 +47,7 @@ app.use('/api/reservations', reservationRoutes);
 app.use('/api/orders', orderRoutes);
 
 // Database Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/savoria', {
+mongoose.connect(process.env.MONGO_URI, {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
