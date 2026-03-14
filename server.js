@@ -22,7 +22,8 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   process.env.FRONTEND_URL,
-  'https://savoria-frontend-blond.vercel.app'
+  'https://savoria-frontend-blond.vercel.app',
+  'https://savoria.ansumanjena.in'
 ].filter(Boolean);
 
 app.use(cors({
