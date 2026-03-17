@@ -10,7 +10,10 @@ async function assignTable(date, time) {
   const [hours, minutes] = time.split(':').map(Number);
   const requestedMinutes = hours * 60 + minutes;
 
+  console.log(`[AssignTable] Checking: Date=${date}, Time=${time} (${requestedMinutes} mins)`);
+
   const reservationsOnDate = await Reservation.find({ date, status: 'Confirmed' });
+  console.log(`[AssignTable] Found ${reservationsOnDate.length} confirmed reservations on this date.`);
 
   const occupiedTables = new Set();
   for (const res of reservationsOnDate) {
@@ -18,14 +21,23 @@ async function assignTable(date, time) {
     const resMinutes = rh * 60 + rm;
 
     // 2-hour dining window overlap check
-    const overlap = Math.abs(requestedMinutes - resMinutes) < DINING_WINDOW_HOURS * 60;
+    const diff = Math.abs(requestedMinutes - resMinutes);
+    const overlap = diff < DINING_WINDOW_HOURS * 60;
+    
+    console.log(`- Table ${res.tableNumber} at ${res.time} (${resMinutes} mins). Diff: ${diff}m. Overlap: ${overlap}`);
+
     if (overlap) {
-      occupiedTables.add(res.tableNumber);
+      occupiedTables.add(Number(res.tableNumber));
     }
   }
 
+  console.log(`[AssignTable] Occupied:`, Array.from(occupiedTables));
+
   for (let t = 1; t <= TOTAL_TABLES; t++) {
-    if (!occupiedTables.has(t)) return t;
+    if (!occupiedTables.has(t)) {
+      console.log(`[AssignTable] Result: Table ${t}`);
+      return t;
+    }
   }
   return null; // Fully booked
 }
