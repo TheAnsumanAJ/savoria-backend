@@ -6,7 +6,8 @@ const {
   getOrdersByReservation,
   getAllOrders, 
   updateOrderStatus, 
-  cancelOrder 
+  cancelOrder,
+  getOrderById
 } = require('../controllers/orderController');
 
 // POST a new order
@@ -15,11 +16,14 @@ router.post('/', createOrder);
 // GET all orders for a specific user email
 router.get('/user/:email', getOrdersByUser);
 
-// GET orders linked to a reservation
-router.get('/reservation/:reservationId', getOrdersByReservation);
-
 // GET all orders (Manager only)
 router.get('/', getAllOrders);
+
+// GET all orders for a specific reservation
+router.get('/reservation/:id', getOrdersByReservation);
+
+// GET order by ID
+router.get('/:id', getOrderById);
 
 // PATCH to update order status (Manager only)
 router.patch('/:id/status', updateOrderStatus);

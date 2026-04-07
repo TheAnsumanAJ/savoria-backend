@@ -2,6 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const http = require('http');
+const { Server } = require('socket.io');
 
 // Load env vars
 dotenv.config();
@@ -11,8 +13,34 @@ const authRoutes = require('./routes/authRoutes');
 const menuRoutes = require('./routes/menuRoutes');
 const reservationRoutes = require('./routes/reservationRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+  }
+});
+
+// Attach io to app to make it accessible in controllers
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  console.log('⚡ New client connected:', socket.id);
+
+  socket.on('join', (room) => {
+    socket.join(room);
+    console.log(`👤 Client joined room: ${room}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('🔌 Client disconnected');
+  });
+});
 
 // Body parser
 app.use(express.json());
@@ -28,19 +56,13 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
-    // Normalize origins (remove trailing slashes for safer comparison)
     const normalizedOrigin = origin.replace(/\/$/, "");
     const isAllowed = allowedOrigins.some(o => o.replace(/\/$/, "") === normalizedOrigin);
-
     if (isAllowed) {
       callback(null, true);
     } else {
-      console.error(`🚫 CORS blocked for origin: ${origin}`);
-      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-      callback(new Error(msg), false);
+      callback(new Error('Not allowed by CORS'), false);
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
@@ -53,13 +75,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Database Connection
-mongoose.connect(process.env.MONGO_URI, {
-  maxPoolSize: 10,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-})
+mongoose.connect(process.env.MONGO_URI)
 .then(() => {
   console.log('✅ MongoDB connected successfully');
 })
@@ -70,4 +89,4 @@ mongoose.connect(process.env.MONGO_URI, {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, console.log(`🚀 Server running on port ${PORT}`));

@@ -25,10 +25,27 @@ const createOrder = async (req, res) => {
       status: 'Pending'
     });
 
+    // Real-time: Notify managers about new order
+    const io = req.app.get('io');
+    if (io) {
+      io.to('managers').emit('new-order-alert', { orderId: order._id, customer: name });
+    }
+
     res.status(201).json(order);
   } catch (err) {
     console.error('Create order error:', err);
     res.status(500).json({ message: 'Failed to create order' });
+  }
+};
+
+// GET /api/orders/:id
+const getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch order' });
   }
 };
 
@@ -45,9 +62,32 @@ const getOrdersByUser = async (req, res) => {
 // GET /api/orders/reservation/:id
 const getOrdersByReservation = async (req, res) => {
   try {
-    const orders = await Order.find({ reservationId: req.params.id }).sort({ createdAt: -1 });
+    const reservationId = req.params.id;
+    // 1. Try finding by reservationId directly
+    let orders = await Order.find({ reservationId }).sort({ createdAt: 1 });
+    
+    // 2. Fallback: If no orders linked by ID, find by table + email + date of reservation
+    if (orders.length === 0) {
+      const reservation = await Reservation.findById(reservationId);
+      if (reservation) {
+        // Find orders for this table and user on the same date (within 12 hours)
+        const dateStart = new Date(reservation.date);
+        dateStart.setHours(0,0,0,0);
+        const dateEnd = new Date(reservation.date);
+        dateEnd.setHours(23,59,59,999);
+
+        orders = await Order.find({
+          tableNumber: reservation.tableNumber,
+          userEmail: reservation.email,
+          createdAt: { $gte: dateStart, $lte: dateEnd },
+          type: 'table_order'
+        }).sort({ createdAt: 1 });
+      }
+    }
+
     res.json(orders);
   } catch (err) {
+    console.error('Fetch reservation orders error:', err);
     res.status(500).json({ message: 'Failed to fetch orders for reservation' });
   }
 };
@@ -67,6 +107,13 @@ const updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Real-time: Notify specific user about status update
+    const io = req.app.get('io');
+    if (io) {
+      io.to(order.userEmail).emit('order-status-update', { orderId: order._id, status: order.status });
+    }
+
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: 'Failed to update order status' });
@@ -84,4 +131,4 @@ const cancelOrder = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, getOrdersByUser, getOrdersByReservation, getAllOrders, updateOrderStatus, cancelOrder };
+module.exports = { createOrder, getOrderById, getOrdersByUser, getOrdersByReservation, getAllOrders, updateOrderStatus, cancelOrder };

@@ -21,7 +21,11 @@ const orderSchema = new mongoose.Schema({
   tableNumber: { type: Number, default: null },
   address: { type: String, default: '' },
   notes: { type: String, default: '' },
-  status: { type: String, enum: ['Pending', 'Processing', 'Ready', 'Delivered', 'Cancelled'], default: 'Pending' }
+  status: { type: String, enum: ['Pending', 'Processing', 'Ready', 'Delivered', 'Cancelled'], default: 'Pending' },
+  paymentMethod: { type: String, enum: ['Cash', 'Online', 'None'], default: 'None' },
+  paymentStatus: { type: String, enum: ['Pending', 'Paid'], default: 'Pending' },
+  razorpayOrderId: { type: String, default: '' },
+  razorpayPaymentId: { type: String, default: '' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);
